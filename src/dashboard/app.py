@@ -740,11 +740,22 @@ def create_app(df: pd.DataFrame) -> Dash:
                     annotations=[dict(text="Error loading temporal data", showarrow=False, font=dict(size=14))]
                 )
         else:
+            # Explicit message when source data has no publication_date values
             fig_temporal = go.Figure()
             fig_temporal.update_layout(
-                title="📅 Job Postings Timeline (No Data)",
+                title="📅 Job Postings Timeline (No Dates in Source)",
                 template=CHART_TEMPLATE,
-                annotations=[dict(text="No publication date data available", showarrow=False, font=dict(size=14))]
+                annotations=[dict(
+                    text="Publication dates were not provided in the scraped data. Rerun scraping with dates to enable this chart.",
+                    showarrow=False,
+                    font=dict(size=13),
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=0.5
+                )],
+                xaxis=dict(visible=False),
+                yaxis=dict(visible=False)
             )
 
         return fig_sector, fig_salary, fig_location, fig_cluster, fig_companies, fig_temporal
