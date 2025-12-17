@@ -1,0 +1,25 @@
+# LEBI Project - Python Dependencies
+
+# Core Data Processing
+pandas>=1.5.0
+numpy>=1.23.0
+
+# Web Scraping
+requests>=2.28.0
+beautifulsoup4>=4.11.0
+lxml>=4.9.0
+selenium>=4.0.0
+webdriver-manager>=3.8.0
+
+# Machine Learning
+scikit-learn>=1.2.0
+
+# Dashboard & Visualization
+dash>=2.9.0
+plotly>=5.14.0
+
+# Natural Language Processing (Optional)
+# nltk>=3.8.0  # Only if using advanced text processing
+
+# Utilities
+python-dateutil>=2.8.0

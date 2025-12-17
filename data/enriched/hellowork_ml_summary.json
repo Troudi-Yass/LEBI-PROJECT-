@@ -1,0 +1,50 @@
+{
+  "rows": 1186,
+  "salary": {
+    "count": 1021,
+    "mean": 2095.293041952334,
+    "median": 2116.9,
+    "min": 1.0041666666666669,
+    "max": 8229.0
+  },
+  "top_sectors": {
+    "Enseignement • Formation": 251,
+    "Services aux Personnes • Particuliers": 245,
+    "Distribution • Commerce de gros": 215,
+    "Services aux Entreprises": 125,
+    "Service public hospitalier": 54,
+    "Industrie Auto • Meca • Navale": 52,
+    "Immobilier": 39,
+    "Média • Internet • Communication": 39,
+    "Secteur informatique • ESN": 29,
+    "Transport • Logistique": 27
+  },
+  "top_companies": {
+    "Acadomia": 209,
+    "Esallia": 149,
+    "Kangourou Kids": 83,
+    "Assadia": 78,
+    "Ouihelp": 52,
+    "Une pièce en plus": 36,
+    "Groupement Mousquetaires": 32,
+    "Valeo": 29,
+    "Family Sphere": 29,
+    "INSTITUT DE COMMERCE ET DE FORMATION EN ALTERNANCE (ICFAP)": 24
+  },
+  "cluster_counts": {
+    "0": 149,
+    "1": 56,
+    "2": 33,
+    "3": 209,
+    "4": 431,
+    "5": 166,
+    "6": 13,
+    "7": 51,
+    "8": 42,
+    "9": 36
+  },
+  "predicted_high_salary": {
+    "0": 874,
+    "1": 312
+  }
+}
