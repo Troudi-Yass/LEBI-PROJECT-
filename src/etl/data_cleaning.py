@@ -251,6 +251,42 @@ def handle_missing(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def remove_empty_categories(df: pd.DataFrame, columns: list = None) -> pd.DataFrame:
+    """Remove rows with empty/missing values in critical categorical columns.
+    
+    Args:
+        df: Input DataFrame
+        columns: List of columns to check. Defaults to ['sector', 'location', 'contract_type']
+        
+    Returns:
+        DataFrame with rows having empty critical columns removed
+    """
+    if df.empty:
+        return df
+    
+    if columns is None:
+        columns = ['sector', 'location', 'contract_type']
+    
+    # Filter to only existing columns
+    columns_to_check = [c for c in columns if c in df.columns]
+    
+    before = len(df)
+    
+    # Remove rows where any of the critical columns are empty/missing
+    for col in columns_to_check:
+        # Convert to string and strip whitespace
+        df[col] = df[col].astype(str).str.strip()
+        # Remove rows with empty strings or 'nan'
+        df = df[(df[col] != '') & (df[col] != 'nan') & (df[col].notna())]
+        logger.info("  - Removed empty '%s' values: %d rows remaining", col, len(df))
+    
+    removed = before - len(df)
+    logger.info("✓ Removed rows with empty categories: %d -> %d (removed %d)", before, len(df), removed)
+    
+    return df
+    return df
+
+
 def extract_keywords_tfidf(df: pd.DataFrame, text_col: str = "description", top_k: int = 10) -> pd.DataFrame:
     """Compute TF-IDF and attach top keywords as a new column.
 
@@ -304,6 +340,10 @@ def prepare_clean(path_in: Path = RAW_CSV, path_out: Path = CLEAN_CSV) -> pd.Dat
         return df
     df = clean_duplicates(df)
     df = handle_missing(df)
+    
+    # Remove rows with empty critical categories (MAJOR CHANGE!)
+    logger.info("Removing rows with empty categories...")
+    df = remove_empty_categories(df, columns=['sector', 'location', 'contract_type'])
     
     # Parse publication dates (French relative dates)
     if "publication_date" in df.columns:

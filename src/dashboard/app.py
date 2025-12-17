@@ -14,6 +14,22 @@ from src.utils.config import CLEAN_CSV, ENRICHED_CSV, get_logger
 
 logger = get_logger("dashboard")
 
+# Modern color palette
+COLORS = {
+    'primary': '#2C3E50',
+    'secondary': '#3498DB',
+    'accent': '#E74C3C',
+    'success': '#27AE60',
+    'warning': '#F39C12',
+    'background': '#ECF0F1',
+    'card': '#FFFFFF',
+    'text': '#2C3E50',
+    'border': '#BDC3C7'
+}
+
+# Chart template
+CHART_TEMPLATE = 'plotly_white'
+
 
 def load_data(path: Path = CLEAN_CSV) -> pd.DataFrame:
     """Load data from enriched CSV if available, otherwise cleaned CSV."""
@@ -43,91 +59,325 @@ def load_data(path: Path = CLEAN_CSV) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def create_kpi_card(title, value, icon="📊", color=COLORS['secondary']):
+    """Create a KPI card component."""
+    return html.Div([
+        html.Div([
+            html.Div(icon, style={
+                'fontSize': '2.5rem',
+                'marginBottom': '10px'
+            }),
+            html.H3(title, style={
+                'margin': '10px 0',
+                'fontSize': '0.9rem',
+                'color': COLORS['text'],
+                'fontWeight': '500',
+                'textTransform': 'uppercase',
+                'letterSpacing': '0.5px'
+            }),
+            html.H2(value, style={
+                'margin': '5px 0',
+                'fontSize': '2rem',
+                'color': color,
+                'fontWeight': 'bold'
+            })
+        ], style={'textAlign': 'center'})
+    ], style={
+        'backgroundColor': COLORS['card'],
+        'padding': '25px',
+        'borderRadius': '12px',
+        'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
+        'transition': 'transform 0.2s, box-shadow 0.2s',
+        'cursor': 'pointer',
+        'border': f'1px solid {COLORS["border"]}',
+        'flex': '1',
+        'minWidth': '200px',
+        'margin': '10px'
+    })
+
+
 def create_app(df: pd.DataFrame) -> Dash:
     """Create and configure the Dash application."""
-    app = Dash(__name__)
+    app = Dash(__name__, suppress_callback_exceptions=True)
     
     # Extract unique values for filters
     sectors = sorted(df["sector"].dropna().unique().tolist()) if "sector" in df.columns else []
     locations = sorted(df["location"].dropna().unique().tolist()) if "location" in df.columns else []
     contract_types = sorted(df["contract_type"].dropna().unique().tolist()) if "contract_type" in df.columns else []
 
-    # Layout
+    # Calculate KPIs
+    total_jobs = len(df)
+    avg_salary = f"€{df['salary_monthly'].mean():,.0f}" if 'salary_monthly' in df.columns and df['salary_monthly'].notna().any() else "N/A"
+    total_sectors = df['sector'].nunique() if 'sector' in df.columns else 0
+    total_companies = df['company'].nunique() if 'company' in df.columns else 0
+
+    # Layout with modern styling
     app.layout = html.Div([
-        html.H1("LEBI - Job Offers Explorer", style={"textAlign": "center", "marginBottom": "30px"}),
-        
-        # Filters Panel
+        # Header
         html.Div([
-            html.H3("Filters"),
-            html.Label("Sector"),
-            dcc.Dropdown(
-                id="sector-filter", 
-                options=[{"label": s, "value": s} for s in sectors], 
-                multi=True,
-                placeholder="Select sectors..."
-            ),
-            html.Br(),
-            html.Label("Location"),
-            dcc.Dropdown(
-                id="location-filter", 
-                options=[{"label": l, "value": l} for l in locations], 
-                multi=True,
-                placeholder="Select locations..."
-            ),
-            html.Br(),
-            html.Label("Contract Type"),
-            dcc.Dropdown(
-                id="contract-filter", 
-                options=[{"label": c, "value": c} for c in contract_types], 
-                multi=True,
-                placeholder="Select contract types..."
-            ),
-            html.Br(),
-            html.Label("Cluster (if available)"),
-            dcc.Input(
-                id="cluster-filter", 
-                type="number", 
-                placeholder="Enter cluster ID",
-                style={"width": "100%"}
-            ),
-            html.Br(),
-            html.Br(),
-            html.Label("Salary Range (monthly €)"),
-            dcc.RangeSlider(
-                id="salary-range", 
-                min=0, 
-                max=20000, 
-                step=100, 
-                value=[0, 20000],
-                marks={0: "0€", 5000: "5k€", 10000: "10k€", 15000: "15k€", 20000: "20k€"},
-                tooltip={"placement": "bottom", "always_visible": True}
-            ),
+            html.Div([
+                html.H1("🎯 LEBI Job Market Dashboard", style={
+                    'color': COLORS['card'],
+                    'margin': '0',
+                    'fontSize': '2.5rem',
+                    'fontWeight': '700',
+                    'letterSpacing': '-0.5px'
+                }),
+                html.P("Real-time insights into job market trends and opportunities", style={
+                    'color': COLORS['card'],
+                    'margin': '10px 0 0 0',
+                    'fontSize': '1.1rem',
+                    'opacity': '0.9'
+                })
+            ], style={'textAlign': 'center'})
         ], style={
-            "width": "25%", 
-            "display": "inline-block", 
-            "verticalAlign": "top", 
-            "padding": "20px",
-            "backgroundColor": "#f8f9fa",
-            "borderRadius": "5px"
+            'backgroundColor': COLORS['primary'],
+            'padding': '40px 20px',
+            'marginBottom': '30px',
+            'boxShadow': '0 4px 6px rgba(0,0,0,0.1)'
         }),
-        
-        # Graphs Panel
+
+        # KPI Cards
         html.Div([
-            dcc.Graph(id="jobs-by-sector"),
-            dcc.Graph(id="salary-dist"),
-            dcc.Graph(id="cluster-viz"),
-            dcc.Graph(id="top-companies"),
-            dcc.Graph(id="temporal-trend"),
+            create_kpi_card("Total Jobs", f"{total_jobs:,}", "💼", COLORS['secondary']),
+            create_kpi_card("Avg Salary", avg_salary, "💰", COLORS['success']),
+            create_kpi_card("Sectors", total_sectors, "🏢", COLORS['warning']),
+            create_kpi_card("Companies", total_companies, "🏭", COLORS['accent']),
         ], style={
-            "width": "70%", 
-            "display": "inline-block", 
-            "padding": "20px"
+            'display': 'flex',
+            'flexWrap': 'wrap',
+            'justifyContent': 'center',
+            'margin': '0 auto 30px auto',
+            'maxWidth': '1400px',
+            'padding': '0 20px'
         }),
-    ])
+
+        # Main Content Container
+        html.Div([
+            # Filters Sidebar
+            html.Div([
+                html.Div([
+                    html.H3("🔍 Filters", style={
+                        'color': COLORS['primary'],
+                        'marginBottom': '25px',
+                        'fontSize': '1.5rem',
+                        'fontWeight': '600',
+                        'borderBottom': f'3px solid {COLORS["secondary"]}',
+                        'paddingBottom': '10px'
+                    }),
+                    
+                    html.Div([
+                        html.Label("🏢 Sector", style={'fontWeight': '600', 'color': COLORS['text'], 'marginBottom': '8px', 'display': 'block'}),
+                        dcc.Dropdown(
+                            id="sector-filter", 
+                            options=[{"label": s, "value": s} for s in sectors], 
+                            multi=True,
+                            placeholder="All sectors...",
+                            style={'marginBottom': '20px'}
+                        ),
+                    ]),
+                    
+                    html.Div([
+                        html.Label("📍 Location", style={'fontWeight': '600', 'color': COLORS['text'], 'marginBottom': '8px', 'display': 'block'}),
+                        dcc.Dropdown(
+                            id="location-filter", 
+                            options=[{"label": l, "value": l} for l in locations], 
+                            multi=True,
+                            placeholder="All locations...",
+                            style={'marginBottom': '20px'}
+                        ),
+                    ]),
+                    
+                    html.Div([
+                        html.Label("📝 Contract Type", style={'fontWeight': '600', 'color': COLORS['text'], 'marginBottom': '8px', 'display': 'block'}),
+                        dcc.Dropdown(
+                            id="contract-filter", 
+                            options=[{"label": c, "value": c} for c in contract_types], 
+                            multi=True,
+                            placeholder="All contract types...",
+                            style={'marginBottom': '20px'}
+                        ),
+                    ]),
+                    
+                    html.Div([
+                        html.Label("🔢 Cluster ID", style={'fontWeight': '600', 'color': COLORS['text'], 'marginBottom': '8px', 'display': 'block'}),
+                        dcc.Input(
+                            id="cluster-filter", 
+                            type="number", 
+                            placeholder="Enter cluster...",
+                            style={
+                                'width': '100%',
+                                'padding': '10px',
+                                'borderRadius': '5px',
+                                'border': f'1px solid {COLORS["border"]}',
+                                'marginBottom': '20px'
+                            }
+                        ),
+                    ]),
+                    
+                    html.Div([
+                        html.Label("💵 Salary Range (monthly)", style={'fontWeight': '600', 'color': COLORS['text'], 'marginBottom': '15px', 'display': 'block'}),
+                        dcc.RangeSlider(
+                            id="salary-range", 
+                            min=0, 
+                            max=20000, 
+                            step=100, 
+                            value=[0, 20000],
+                            marks={
+                                0: {'label': '0€', 'style': {'fontSize': '0.85rem'}}, 
+                                5000: {'label': '5k€', 'style': {'fontSize': '0.85rem'}}, 
+                                10000: {'label': '10k€', 'style': {'fontSize': '0.85rem'}}, 
+                                15000: {'label': '15k€', 'style': {'fontSize': '0.85rem'}}, 
+                                20000: {'label': '20k€', 'style': {'fontSize': '0.85rem'}}
+                            },
+                            tooltip={"placement": "bottom", "always_visible": True}
+                        ),
+                    ], style={'marginBottom': '30px'}),
+                    
+                    html.Div([
+                        html.Button('🔄 Reset Filters', id='reset-btn', n_clicks=0, style={
+                            'width': '100%',
+                            'padding': '12px',
+                            'backgroundColor': COLORS['accent'],
+                            'color': 'white',
+                            'border': 'none',
+                            'borderRadius': '8px',
+                            'fontSize': '1rem',
+                            'fontWeight': '600',
+                            'cursor': 'pointer',
+                            'transition': 'all 0.3s',
+                            'boxShadow': '0 2px 4px rgba(0,0,0,0.2)'
+                        })
+                    ])
+                ], style={
+                    'backgroundColor': COLORS['card'],
+                    'padding': '30px',
+                    'borderRadius': '12px',
+                    'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
+                    'border': f'1px solid {COLORS["border"]}',
+                    'position': 'sticky',
+                    'top': '20px'
+                })
+            ], style={
+                'width': '28%',
+                'display': 'inline-block',
+                'verticalAlign': 'top',
+                'padding': '0 15px'
+            }),
+            
+            # Charts Panel
+            html.Div([
+                # Row 1: Sector and Salary charts
+                html.Div([
+                    html.Div([
+                        dcc.Graph(id="jobs-by-sector", config={'displayModeBar': True, 'displaylogo': False})
+                    ], style={
+                        'width': '48%',
+                        'display': 'inline-block',
+                        'backgroundColor': COLORS['card'],
+                        'padding': '20px',
+                        'borderRadius': '12px',
+                        'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
+                        'marginRight': '4%',
+                        'border': f'1px solid {COLORS["border"]}'
+                    }),
+                    html.Div([
+                        dcc.Graph(id="salary-dist", config={'displayModeBar': True, 'displaylogo': False})
+                    ], style={
+                        'width': '48%',
+                        'display': 'inline-block',
+                        'backgroundColor': COLORS['card'],
+                        'padding': '20px',
+                        'borderRadius': '12px',
+                        'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
+                        'border': f'1px solid {COLORS["border"]}'
+                    })
+                ], style={'marginBottom': '30px'}),
+                
+                # Row 2: Location Distribution
+                html.Div([
+                    dcc.Graph(id="jobs-by-location", config={'displayModeBar': True, 'displaylogo': False})
+                ], style={
+                    'backgroundColor': COLORS['card'],
+                    'padding': '20px',
+                    'borderRadius': '12px',
+                    'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
+                    'marginBottom': '30px',
+                    'border': f'1px solid {COLORS["border"]}'
+                }),
+                
+                # Row 3: Cluster visualization (full width)
+                html.Div([
+                    dcc.Graph(id="cluster-viz", config={'displayModeBar': True, 'displaylogo': False})
+                ], style={
+                    'backgroundColor': COLORS['card'],
+                    'padding': '20px',
+                    'borderRadius': '12px',
+                    'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
+                    'marginBottom': '30px',
+                    'border': f'1px solid {COLORS["border"]}'
+                }),
+                
+                # Row 4: Companies and Temporal trend
+                html.Div([
+                    html.Div([
+                        dcc.Graph(id="top-companies", config={'displayModeBar': True, 'displaylogo': False})
+                    ], style={
+                        'width': '48%',
+                        'display': 'inline-block',
+                        'backgroundColor': COLORS['card'],
+                        'padding': '20px',
+                        'borderRadius': '12px',
+                        'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
+                        'marginRight': '4%',
+                        'border': f'1px solid {COLORS["border"]}'
+                    }),
+                    html.Div([
+                        dcc.Graph(id="temporal-trend", config={'displayModeBar': True, 'displaylogo': False})
+                    ], style={
+                        'width': '48%',
+                        'display': 'inline-block',
+                        'backgroundColor': COLORS['card'],
+                        'padding': '20px',
+                        'borderRadius': '12px',
+                        'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
+                        'border': f'1px solid {COLORS["border"]}'
+                    })
+                ])
+            ], style={
+                'width': '68%',
+                'display': 'inline-block',
+                'padding': '0 15px'
+            })
+        ], style={
+            'maxWidth': '1600px',
+            'margin': '0 auto',
+            'padding': '20px'
+        }),
+
+        # Footer
+        html.Div([
+            html.P("© 2025 LEBI Project | Job Market Intelligence Platform", style={
+                'textAlign': 'center',
+                'color': COLORS['card'],
+                'margin': '0',
+                'fontSize': '0.9rem'
+            })
+        ], style={
+            'backgroundColor': COLORS['primary'],
+            'padding': '20px',
+            'marginTop': '50px'
+        })
+    ], style={
+        'backgroundColor': COLORS['background'],
+        'minHeight': '100vh',
+        'fontFamily': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+    })
 
     @app.callback(
         Output("jobs-by-sector", "figure"),
         Output("salary-dist", "figure"),
+        Output("jobs-by-location", "figure"),
         Output("cluster-viz", "figure"),
         Output("top-companies", "figure"),
         Output("temporal-trend", "figure"),
@@ -174,7 +424,7 @@ def create_app(df: pd.DataFrame) -> Dash:
             if not dff.empty:
                 dff = dff[(dff["salary_monthly"] >= salary_range[0]) & (dff["salary_monthly"] <= salary_range[1])]
 
-        # Graph 1: Jobs by sector
+        # Graph 1: Jobs by sector (Enhanced)
         if "sector" in dff.columns and not dff.empty:
             sector_counts = dff["sector"].value_counts().reset_index()
             sector_counts.columns = ["sector", "count"]
@@ -182,28 +432,128 @@ def create_app(df: pd.DataFrame) -> Dash:
                 sector_counts.head(15), 
                 x="sector", 
                 y="count", 
-                title="Job Distribution by Sector (Top 15)",
-                labels={"sector": "Sector", "count": "Number of Jobs"}
+                title="📊 Job Distribution by Sector (Top 15)",
+                labels={"sector": "Sector", "count": "Number of Jobs"},
+                color="count",
+                color_continuous_scale="Blues",
+                template=CHART_TEMPLATE
+            )
+            fig_sector.update_traces(
+                texttemplate='%{y}',
+                textposition='outside',
+                hovertemplate='<b>%{x}</b><br>Jobs: %{y}<extra></extra>'
             )
             fig_sector.update_xaxes(tickangle=45)
+            fig_sector.update_layout(
+                showlegend=False,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(size=12),
+                title_font=dict(size=16, color=COLORS['primary']),
+                margin=dict(t=60, l=50, r=30, b=100)
+            )
         else:
             fig_sector = go.Figure()
-            fig_sector.update_layout(title="Job Distribution by Sector (No Data)")
+            fig_sector.update_layout(
+                title="📊 Job Distribution by Sector (No Data)",
+                template=CHART_TEMPLATE,
+                annotations=[dict(text="No data available", showarrow=False, font=dict(size=14))]
+            )
 
-        # Graph 2: Salary distribution
+        # Graph 2: Salary distribution (Enhanced)
         if "salary_monthly" in dff.columns and dff["salary_monthly"].notna().any():
+            salary_data = dff[dff["salary_monthly"].notna()]
             fig_salary = px.histogram(
-                dff[dff["salary_monthly"].notna()], 
+                salary_data, 
                 x="salary_monthly", 
-                nbins=50, 
-                title="Salary Distribution (Monthly €)",
-                labels={"salary_monthly": "Monthly Salary (€)"}
+                nbins=40, 
+                title="💰 Salary Distribution",
+                labels={"salary_monthly": "Monthly Salary (€)", "count": "Frequency"},
+                color_discrete_sequence=[COLORS['success']],
+                template=CHART_TEMPLATE
+            )
+            
+            # Add mean and median lines
+            mean_salary = salary_data["salary_monthly"].mean()
+            median_salary = salary_data["salary_monthly"].median()
+            
+            fig_salary.add_vline(
+                x=mean_salary, 
+                line_dash="dash", 
+                line_color=COLORS['accent'], 
+                annotation_text=f"Mean: €{mean_salary:,.0f}",
+                annotation_position="top"
+            )
+            fig_salary.add_vline(
+                x=median_salary, 
+                line_dash="dot", 
+                line_color=COLORS['warning'], 
+                annotation_text=f"Median: €{median_salary:,.0f}",
+                annotation_position="bottom"
+            )
+            
+            fig_salary.update_traces(
+                hovertemplate='Salary: €%{x:,.0f}<br>Count: %{y}<extra></extra>'
+            )
+            fig_salary.update_layout(
+                showlegend=False,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(size=12),
+                title_font=dict(size=16, color=COLORS['primary']),
+                margin=dict(t=60, l=50, r=30, b=50)
             )
         else:
             fig_salary = go.Figure()
-            fig_salary.update_layout(title="Salary Distribution (No Data)")
+            fig_salary.update_layout(
+                title="💰 Salary Distribution (No Data)",
+                template=CHART_TEMPLATE,
+                annotations=[dict(text="No salary data available", showarrow=False, font=dict(size=14))]
+            )
 
-        # Graph 3: Cluster visualization (support both 'cluster' and 'job_cluster')
+        # Graph 3: Location Distribution (Enhanced)
+        if "location" in dff.columns and not dff.empty:
+            location_counts = dff["location"].value_counts().reset_index()
+            location_counts.columns = ["location", "count"]
+            
+            # Take top 20 locations
+            location_counts = location_counts.head(20)
+            
+            fig_location = px.bar(
+                location_counts,
+                x="count",
+                y="location",
+                orientation='h',
+                title="📍 Top 20 Job Locations",
+                labels={"location": "Location", "count": "Number of Jobs"},
+                color="count",
+                color_continuous_scale="Teal",
+                template=CHART_TEMPLATE
+            )
+            fig_location.update_traces(
+                texttemplate='%{x}',
+                textposition='outside',
+                hovertemplate='<b>%{y}</b><br>Jobs: %{x}<extra></extra>'
+            )
+            fig_location.update_layout(
+                showlegend=False,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(size=12),
+                title_font=dict(size=16, color=COLORS['primary']),
+                margin=dict(t=60, l=200, r=30, b=50),
+                yaxis=dict(autorange="reversed"),
+                height=600
+            )
+        else:
+            fig_location = go.Figure()
+            fig_location.update_layout(
+                title="📍 Job Distribution by Location (No Data)",
+                template=CHART_TEMPLATE,
+                annotations=[dict(text="No location data available", showarrow=False, font=dict(size=14))]
+            )
+
+        # Graph 4: Cluster visualization (Enhanced with better colors)
         cluster_col = None
         if "job_cluster" in dff.columns:
             cluster_col = "job_cluster"
@@ -215,65 +565,144 @@ def create_app(df: pd.DataFrame) -> Dash:
                 cluster_data = dff[dff[cluster_col].notna() & dff["salary_monthly"].notna()].copy()
                 if not cluster_data.empty:
                     cluster_data[cluster_col] = cluster_data[cluster_col].astype(str)
-                    fig_cluster = px.scatter(
+                    
+                    # Create box plot instead of scatter for better visualization
+                    fig_cluster = px.box(
                         cluster_data, 
-                        x="salary_monthly", 
-                        y=cluster_col, 
+                        x=cluster_col, 
+                        y="salary_monthly",
                         color=cluster_col,
-                        title="Cluster Distribution (Salary vs Cluster)",
-                        labels={"salary_monthly": "Monthly Salary (€)", cluster_col: "Cluster ID"}
+                        title="🎯 Salary Distribution by Cluster",
+                        labels={"salary_monthly": "Monthly Salary (€)", cluster_col: "Cluster ID"},
+                        color_discrete_sequence=px.colors.qualitative.Set3,
+                        template=CHART_TEMPLATE
+                    )
+                    fig_cluster.update_traces(
+                        hovertemplate='Cluster %{x}<br>Salary: €%{y:,.0f}<extra></extra>'
+                    )
+                    fig_cluster.update_layout(
+                        showlegend=True,
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        font=dict(size=12),
+                        title_font=dict(size=16, color=COLORS['primary']),
+                        margin=dict(t=60, l=50, r=30, b=50)
                     )
                 else:
                     fig_cluster = go.Figure()
-                    fig_cluster.update_layout(title="Cluster Visualization (No Data)")
+                    fig_cluster.update_layout(
+                        title="🎯 Cluster Visualization (No Data)",
+                        template=CHART_TEMPLATE,
+                        annotations=[dict(text="No cluster data available", showarrow=False, font=dict(size=14))]
+                    )
             except Exception as e:
                 logger.warning("Cluster visualization error: %s", e)
                 fig_cluster = go.Figure()
-                fig_cluster.update_layout(title="Cluster Visualization (Error)")
+                fig_cluster.update_layout(
+                    title="🎯 Cluster Visualization (Error)",
+                    template=CHART_TEMPLATE,
+                    annotations=[dict(text=f"Error: {str(e)}", showarrow=False, font=dict(size=14))]
+                )
         else:
             fig_cluster = go.Figure()
-            fig_cluster.update_layout(title="Cluster Visualization (Not Available)")
+            fig_cluster.update_layout(
+                title="🎯 Cluster Visualization (Not Available)",
+                template=CHART_TEMPLATE,
+                annotations=[dict(text="Cluster data not available", showarrow=False, font=dict(size=14))]
+            )
 
-        # Graph 4: Top companies
+        # Graph 5: Top companies (Enhanced)
         if "company" in dff.columns and not dff.empty:
             top = dff["company"].value_counts().nlargest(10).reset_index()
             top.columns = ["company", "count"]
             fig_companies = px.bar(
                 top, 
-                x="company", 
-                y="count", 
-                title="Top 10 Companies",
-                labels={"company": "Company", "count": "Number of Jobs"}
+                y="company", 
+                x="count",
+                orientation='h',
+                title="🏢 Top 10 Hiring Companies",
+                labels={"company": "Company", "count": "Number of Jobs"},
+                color="count",
+                color_continuous_scale="Viridis",
+                template=CHART_TEMPLATE
             )
-            fig_companies.update_xaxes(tickangle=45)
+            fig_companies.update_traces(
+                texttemplate='%{x}',
+                textposition='outside',
+                hovertemplate='<b>%{y}</b><br>Jobs: %{x}<extra></extra>'
+            )
+            fig_companies.update_layout(
+                showlegend=False,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(size=12),
+                title_font=dict(size=16, color=COLORS['primary']),
+                margin=dict(t=60, l=150, r=30, b=50),
+                yaxis=dict(autorange="reversed")
+            )
         else:
             fig_companies = go.Figure()
-            fig_companies.update_layout(title="Top Companies (No Data)")
+            fig_companies.update_layout(
+                title="🏢 Top Companies (No Data)",
+                template=CHART_TEMPLATE,
+                annotations=[dict(text="No company data available", showarrow=False, font=dict(size=14))]
+            )
 
-        # Graph 5: Temporal trend (weekly job postings)
+        # Graph 6: Temporal trend (Enhanced with area chart)
         if "publication_date" in dff.columns and dff["publication_date"].notna().any():
             try:
                 dff_temporal = dff[dff["publication_date"].notna()].copy()
                 dff_temporal = dff_temporal.set_index("publication_date")
                 df_trend = dff_temporal.resample('W').size().reset_index(name='count')
                 
-                fig_temporal = px.line(
-                    df_trend, 
-                    x="publication_date", 
-                    y="count",
-                    title="Job Postings Over Time (Weekly)",
-                    labels={"publication_date": "Week", "count": "Number of Jobs"},
-                    markers=True
+                fig_temporal = go.Figure()
+                
+                # Add area trace
+                fig_temporal.add_trace(go.Scatter(
+                    x=df_trend["publication_date"],
+                    y=df_trend["count"],
+                    mode='lines+markers',
+                    name='Jobs Posted',
+                    line=dict(color=COLORS['secondary'], width=3),
+                    fill='tozeroy',
+                    fillcolor=f'rgba(52, 152, 219, 0.2)',
+                    marker=dict(size=8, color=COLORS['secondary'], line=dict(color='white', width=2)),
+                    hovertemplate='<b>Week: %{x|%Y-%m-%d}</b><br>Jobs: %{y}<extra></extra>'
+                ))
+                
+                fig_temporal.update_layout(
+                    title="📅 Job Postings Timeline (Weekly)",
+                    xaxis_title="Week",
+                    yaxis_title="Number of Jobs",
+                    template=CHART_TEMPLATE,
+                    showlegend=False,
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(size=12),
+                    title_font=dict(size=16, color=COLORS['primary']),
+                    margin=dict(t=60, l=50, r=30, b=50),
+                    hovermode='x unified'
                 )
+                
                 logger.info("✓ Temporal chart: %d weeks, %d total jobs", 
                            len(df_trend), df_trend['count'].sum())
             except Exception as e:
                 logger.warning("Temporal trend error: %s", e)
-                fig_temporal = px.line(title=f"Temporal Trend (Error: {str(e)})")
+                fig_temporal = go.Figure()
+                fig_temporal.update_layout(
+                    title=f"📅 Temporal Trend (Error: {str(e)})",
+                    template=CHART_TEMPLATE,
+                    annotations=[dict(text="Error loading temporal data", showarrow=False, font=dict(size=14))]
+                )
         else:
-            fig_temporal = px.line(title="Temporal Trend (No Date Data)")
+            fig_temporal = go.Figure()
+            fig_temporal.update_layout(
+                title="📅 Job Postings Timeline (No Data)",
+                template=CHART_TEMPLATE,
+                annotations=[dict(text="No publication date data available", showarrow=False, font=dict(size=14))]
+            )
 
-        return fig_sector, fig_salary, fig_cluster, fig_companies, fig_temporal
+        return fig_sector, fig_salary, fig_location, fig_cluster, fig_companies, fig_temporal
 
     return app
 
