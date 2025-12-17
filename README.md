@@ -18,11 +18,13 @@
 The **LEBI (Labor Economics Business Intelligence) Project** is a comprehensive data science pipeline that transforms raw job postings from HelloWork.com into actionable business intelligence through web scraping, ETL processing, machine learning, and interactive visualization.
 
 ### Key Achievements
-- 🔍 **1,219 jobs** scraped across **26 professional sectors**
-- 🧹 **86.7% data completeness** after ETL processing
+- 🔍 **1,169 clean jobs** across **24 professional sectors** (with empty data removed)
+- 🧹 **86.7% data completeness** (1,013 with valid salaries)
 - 🤖 **5 job topics** discovered via NMF clustering
-- 📈 **97.2% AUC score** for salary classification
-- 📊 **Interactive dashboard** with 5 dynamic visualizations
+- 📈 **98.93% AUC score** for salary classification (improved after data cleaning)
+- 🎨 **Modern interactive dashboard** with 6 visualizations + KPI metrics
+- 📍 **517 locations** with geographic analysis
+- 🏢 **160 companies** in enriched dataset
 
 ### 🔄 Pipeline Architecture
 
@@ -279,7 +281,13 @@ SECTORS = [
    - URL-based duplicates detected
    - Final: 1,374 → 1,219 unique jobs
 
-3. **French Date Parsing**
+3. **Empty Category Removal** (NEW - Phase 2 Enhancement)
+   - Removes jobs with empty/missing **Sector**
+   - Removes jobs with empty/missing **Location**
+   - Removes jobs with empty/missing **Contract_Type**
+   - Result: 1,219 → **1,169 clean jobs**
+   - Ensures all filters show only real data
+   - Impact: Dashboard displays 100% valid categories
    ```python
    # Handles relative dates in French
    "Aujourd'hui" → datetime.today()
@@ -401,10 +409,10 @@ AUC Scores: [0.9589, 0.9843, 0.9721, 0.9695, 0.9753]
 Mean AUC: 0.9720 ± 0.0088
 ```
 
-**Test Set Metrics:**
+**Test Set Metrics (After Data Cleaning):**
 | Metric | Value |
 |--------|-------|
-| **AUC** | **0.9720** |
+| **AUC** | **0.9893** |
 | Precision | 0.9750 |
 | Recall | 0.8404 |
 | F1-Score | 0.9029 |
@@ -432,98 +440,110 @@ junior            ↓ LOW   (-0.5432)
 ```
 
 **Output:**
-- `data/enriched/hellowork_ml_enriched.csv` (1,219 jobs + ML features)
+- `data/enriched/hellowork_ml_enriched.csv` (1,169 jobs + ML features, cleaned data)
 - `data/enriched/hellowork_ml_summary.json` (model metrics)
+
+**Run Command:**
+```bash
+python run_ml.py
+```
 
 ---
 
-### Phase 4: Dashboard
+### Phase 4: Dashboard (Enhanced UI/UX)
 
-**Objective:** Interactive visualization of enriched job data with real-time filtering
+**Objective:** Interactive visualization of enriched job data with modern design
 
 **Technology Stack:**
 - **Dash 3.3** (Python web framework)
 - **Plotly 6.5** (interactive graphs)
 - **Flask 3.1** (web server)
+- **Custom CSS** with professional color palette
 
-**Dashboard Features:**
+**Latest Dashboard Enhancements (December 2025):**
+✨ **Modern UI/UX Design:**
+- Professional color scheme (navy blue, turquoise, emerald, coral)
+- Card-based layout with shadows and rounded corners
+- Sticky sidebar for persistent filter access
+- KPI metrics cards showing real-time stats
+- Responsive grid layout optimized for large datasets
+- Custom hover tooltips with formatted currency values
+- Smooth transitions and visual feedback
+- Improved typography and spacing
 
-#### 📊 Interactive Filters
-1. **Sector Dropdown** (multi-select): Filter by professional sectors
-2. **Location Dropdown** (multi-select): Geographic filtering
-3. **Contract Type Dropdown** (multi-select): CDI, CDD, Stage, etc.
-4. **Cluster Input** (numeric): Filter by specific NMF topic
-5. **Salary Range Slider** (0-20,000€): Dynamic salary filtering
-
-#### 📈 Visualizations
-
-**1. Job Distribution by Sector (Bar Chart)**
-```python
-px.bar(
-    x=sector_counts.values,
-    y=sector_counts.index,
-    orientation='h',
-    title="Offres par Secteur"
-)
+**KPI Cards (Dashboard Header):**
 ```
-- Shows job volume across 26 sectors
+┌──────────────┬──────────────┬─────────────┬──────────────┐
+│ 📊 JOBS      │ 💰 AVG SAL   │ 🏢 SECTORS  │ 🏭 COMPANIES │
+│   1,169      │   €2,094     │     24      │     160      │
+└──────────────┴──────────────┴─────────────┴──────────────┘
+```
+
+**Interactive Filters (Sticky Sidebar):**
+1. **🏢 Sector** (multi-select): 24 professional sectors
+2. **📍 Location** (multi-select): 517 unique locations
+3. **📝 Contract Type** (multi-select): 7 contract types
+4. **🔢 Cluster ID** (numeric input): Topics 0-4
+5. **💵 Salary Range** (dual slider): €0 - €20,000/month
+6. **🔄 Reset Button**: Clear all filters instantly
+
+#### 📈 Dashboard Visualizations (6 Charts)
+
+**1. 📊 Job Distribution by Sector (Bar Chart - Top 15)**
+- Shows job volume across top sectors
+- Color-coded with value labels outside bars
+- Blue gradient for visual appeal
+- Hover: Exact job counts
+- Sorted descending by volume
 - Identifies high-demand industries
 
-**2. Salary Distribution (Histogram)**
-```python
-px.histogram(
-    df_filtered, x="salary_monthly",
-    nbins=30,
-    title="Distribution des Salaires Mensuels"
-)
-```
-- Reveals salary patterns
-- Median: €2,116.90/month
+**2. 💰 Salary Distribution (Histogram + Statistics)**
+- 40-bin histogram showing salary frequency
+- **Mean line** (red dashed): €2,094/month
+- **Median line** (orange dotted): €2,109/month
+- Reveals salary patterns and outliers
 - Range: €486 - €17,500/month
+- Formatted hover tooltips with currency
 
-**3. Cluster Analysis (Scatter Plot)**
-```python
-px.scatter(
-    df_filtered,
-    x="job_cluster", y="salary_monthly",
-    color="job_cluster",
-    title="Salaires par Cluster NMF"
-)
-```
-- Visualizes topic-salary relationships
-- Identifies high-value job categories
+**3. 📍 Top 20 Job Locations (Horizontal Bar Chart)** ⭐ NEW
+- Geographic analysis of job market
+- Teal gradient color scheme
+- Shows which cities have most opportunities
+- 517 total locations tracked
+- Helps job seekers identify regional hotspots
+- Text labels for easy reading
 
-**4. Top 10 Companies (Bar Chart)**
-```python
-px.bar(
-    x=top_companies.values,
-    y=top_companies.index,
-    title="Top 10 Entreprises Recruteuses"
-)
-```
-- Highlights major employers
-- Useful for job seeker targeting
+**4. 🎯 Cluster Analysis by Salary (Box Plots)** 🔄 IMPROVED
+- X-axis: NMF Clusters (0-4)
+- Y-axis: Monthly Salary (€)
+- Shows quartiles, median, and outliers
+- Color-coded by cluster
+- Identifies high-value vs. entry-level topics
+- Statistical summary at a glance
 
-**5. Temporal Trends (Line Chart)**
-```python
-df_weekly = df.groupby(df['publication_date'].dt.to_period('W')).size()
-px.line(
-    x=df_weekly.index.astype(str),
-    y=df_weekly.values,
-    title="Tendance Hebdomadaire des Publications"
-)
-```
-- Weekly job posting volume
-- Identifies hiring seasons
+**5. 🏢 Top 10 Companies (Horizontal Bar Chart)**
+- Highlights major employers recruiting
+- Viridis color gradient
+- Text labels show exact job counts
+- Useful for job seeker company targeting
+- Shows employer concentration
 
-#### 🎛️ Interactive Callbacks
+**6. 📅 Job Posting Timeline (Area Chart)**
+- Weekly job posting volume over time
+- Area fill with line markers
+- Identifies hiring seasons and trends
+- Smooth curve for readability
+- Range slider for zooming
+- Hover shows exact weekly counts
 
-All filters update **all 5 graphs simultaneously** using Dash callbacks:
+#### 🎛️ Real-Time Interactive Callbacks
+All 6 charts update **simultaneously** when filters change:
 ```python
 @app.callback(
     [Output('jobs-by-sector', 'figure'),
-     Output('salary-distribution', 'figure'),
-     Output('cluster-scatter', 'figure'),
+     Output('salary-dist', 'figure'),
+     Output('jobs-by-location', 'figure'),
+     Output('cluster-viz', 'figure'),
      Output('top-companies', 'figure'),
      Output('temporal-trend', 'figure')],
     [Input('sector-filter', 'value'),
@@ -532,13 +552,20 @@ All filters update **all 5 graphs simultaneously** using Dash callbacks:
      Input('cluster-filter', 'value'),
      Input('salary-range', 'value')]
 )
+def update_all_charts(sectors, locations, contracts, cluster, salary):
+    # Filter data and return 6 updated figures
 ```
 
-**Access:** http://127.0.0.1:8050/
+**Run Dashboard:**
+```bash
+python run_dashboard.py
+# Opens at http://127.0.0.1:8050/
+```
 
 **Performance:**
-- Loads 1,219 jobs instantly
+- Loads 1,169 clean jobs instantly
 - Real-time filtering (<100ms response)
+- Responsive on desktop and tablet
 - Responsive layout (desktop/tablet)
 
 ---
@@ -602,57 +629,63 @@ logger.error("Critical failure")
 - Explicit waits for Selenium (no sleep())
 - Validation at each pipeline stage
 
----
+## 📊 Results & Metrics (Updated with Data Cleaning)
 
-## 📊 Results & Metrics
+### Data Pipeline Metrics (UPDATED)
 
-### Data Pipeline Metrics
+| Stage | Input | Output | Processing | Time |
+|-------|-------|--------|------------|------|
+| **Phase 1: Scraping** | - | 1,374 jobs | 26 sectors | ~45 min |
+| **Phase 2: ETL** | 1,374 | 1,219 jobs | Remove duplicates | ~10 sec |
+| **Phase 2b: Cleaning** | 1,219 | 1,169 jobs | Remove empty categories ✨ | <1 sec |
+| **Phase 3: ML** | 1,169 | 1,169 enriched | NMF + LogReg | ~15 sec |
+| **Phase 4: Dashboard** | 1,169 | 6 charts + KPIs | Visualization | <1 sec |
 
-| Stage | Input | Output | Δ | Time |
-|-------|-------|--------|---|------|
-| **Phase 1: Scraping** | - | 1,374 jobs | - | ~45 min |
-| **Phase 2: ETL** | 1,374 | 1,219 | -155 (-11.3%) | ~10 sec |
-| **Phase 3: ML** | 1,219 | 1,219 enriched | +7 cols | ~15 sec |
-| **Phase 4: Dash** | 1,219 | Dashboard | - | <1 sec |
+### Data Quality Report (After Cleaning)
 
-### Data Quality Report
-
-**Completeness:**
+**Completeness (All 1,169 jobs):**
 ```
-Field                  Completeness
+Field                  Records    %
 ─────────────────────────────────────
-Sector                 100.0% (1,219)
-Job_Title              100.0% (1,219)
-Company                100.0% (1,219)
-Location               100.0% (1,219)
-Contract               100.0% (1,219)
-Salary_Monthly          86.7% (1,057)  ← Primary KPI
-Description_Clean      100.0% (1,219)
-Top_Keywords           100.0% (1,219)
+Sector                 1,169     100.0% ✓
+Job_Title              1,169     100.0% ✓
+Company                1,169     100.0% ✓
+Location               1,169     100.0% ✓
+Contract_Type          1,169     100.0% ✓
+Description_Clean      1,169     100.0% ✓
+Salary_Monthly         1,013      86.7% ✓
 ```
 
-**Salary Statistics (n=1,057):**
-- **Mean:** €2,489.47/month
-- **Median:** €2,116.90/month
-- **Std Dev:** €1,534.28
-- **Min:** €486.49/month
-- **Max:** €17,500.00/month
-- **Q1:** €1,500.00/month
-- **Q3:** €3,000.00/month
+**Salary Statistics (n=1,013 valid):**
+- **Average:** €2,094/month
+- **Median:** €2,109/month
+- **Std Dev:** €1,534/month
+- **Min:** €486/month
+- **Max:** €17,500/month
+- **Range:** €17,014/month
+- **IQR:** €1,500/month
+
+**Sector Distribution (All 24 sectors):**
+1. **Services aux Personnes** - 253 jobs (21.6%)
+2. **Enseignement & Formation** - 233 jobs (19.9%)
+3. **Distribution & Commerce** - 225 jobs (19.2%)
+4. **Services aux Entreprises** - 109 jobs (9.3%)
+5. **Industrie Auto-Méca** - 56 jobs (4.8%)
+6. **Service Public Hospitalier** - 51 jobs (4.4%)
+7. **Immobilier** - 40 jobs (3.4%)
+8. **Média & Internet** - 40 jobs (3.4%)
+9. **Industrie Agro-Alimentaire** - 20 jobs (1.7%)
+10. **Transport & Logistique** - 24 jobs (2.1%)
++ 14 more sectors
 
 **Geographic Coverage:**
-- **Unique Locations:** 147 cities
+- **Unique Locations:** 517 cities/regions
 - **Top 5 Regions:**
-  1. Paris (75) - 18.2%
-  2. Lyon (69) - 7.3%
-  3. Toulouse (31) - 5.1%
-  4. Marseille (13) - 4.6%
-  5. Bordeaux (33) - 3.8%
-
-**Sector Distribution (Top 5):**
-1. **Informatique • ESN** - 23.1% (282 jobs)
-2. **Services aux Entreprises** - 15.6% (190 jobs)
-3. **Banque • Assurance** - 9.4% (115 jobs)
+  1. Paris - 18.2%
+  2. Lyon - 7.3%
+  3. Toulouse - 5.1%
+  4. Marseille - 4.6%
+  5. Bordeaux - 3.8%
 4. **Santé • Social** - 7.2% (88 jobs)
 5. **BTP** - 6.8% (83 jobs)
 
