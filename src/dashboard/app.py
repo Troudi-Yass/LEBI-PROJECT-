@@ -3,6 +3,7 @@
 Run with: `python -m src.dashboard.app` or `python src/dashboard/app.py`
 """
 import logging
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -31,6 +32,32 @@ COLORS = {
 CHART_TEMPLATE = 'plotly_white'
 
 
+def normalize_location(value: str) -> str:
+    """Normalize location labels (collapse arrondissements into city-level entries)."""
+    if pd.isna(value):
+        return ""
+
+    loc = str(value).strip()
+    if not loc:
+        return ""
+
+    # Collapse Paris/Lyon/Marseille arrondissements to a city-level label
+    match = re.match(r"^(?P<city>Paris|Lyon|Marseille)\s+\d+(?:er|e)?\s*-\s*(?P<dept>\d{2})$", loc, flags=re.IGNORECASE)
+    if match:
+        city = match.group("city").title()
+        dept = match.group("dept")
+        return f"{city} - {dept}"
+
+    # Normalize variant with direct city-dept
+    match = re.match(r"^(?P<city>Paris|Lyon|Marseille)\s*-\s*(?P<dept>\d{2})$", loc, flags=re.IGNORECASE)
+    if match:
+        city = match.group("city").title()
+        dept = match.group("dept")
+        return f"{city} - {dept}"
+
+    return loc
+
+
 def load_data(path: Path = CLEAN_CSV) -> pd.DataFrame:
     """Load data from enriched CSV if available, otherwise cleaned CSV."""
     try:
@@ -51,6 +78,11 @@ def load_data(path: Path = CLEAN_CSV) -> pd.DataFrame:
         if "salary_monthly" in df.columns:
             df["salary_monthly"] = pd.to_numeric(df["salary_monthly"], errors='coerce')
             logger.info("✓ Converted salary_monthly to numeric: %d valid values", df["salary_monthly"].notna().sum())
+
+        # Normalize locations to reduce duplicates (e.g., Paris arrondissements)
+        if "location" in df.columns:
+            df["location"] = df["location"].apply(normalize_location)
+            logger.info("✓ Normalized locations: %d unique", df["location"].nunique())
         
         logger.info("Loaded dataset from %s (%d rows)", use_path, len(df))
         return df
@@ -220,15 +252,16 @@ def create_app(df: pd.DataFrame) -> Dash:
                         dcc.RangeSlider(
                             id="salary-range", 
                             min=0, 
-                            max=20000, 
+                            max=5000, 
                             step=100, 
-                            value=[0, 20000],
+                            value=[0, 5000],
                             marks={
                                 0: {'label': '0€', 'style': {'fontSize': '0.85rem'}}, 
-                                5000: {'label': '5k€', 'style': {'fontSize': '0.85rem'}}, 
-                                10000: {'label': '10k€', 'style': {'fontSize': '0.85rem'}}, 
-                                15000: {'label': '15k€', 'style': {'fontSize': '0.85rem'}}, 
-                                20000: {'label': '20k€', 'style': {'fontSize': '0.85rem'}}
+                                1000: {'label': '1k€', 'style': {'fontSize': '0.85rem'}}, 
+                                2000: {'label': '2k€', 'style': {'fontSize': '0.85rem'}}, 
+                                3000: {'label': '3k€', 'style': {'fontSize': '0.85rem'}}, 
+                                4000: {'label': '4k€', 'style': {'fontSize': '0.85rem'}},
+                                5000: {'label': '5k€', 'style': {'fontSize': '0.85rem'}}
                             },
                             tooltip={"placement": "bottom", "always_visible": True}
                         ),
@@ -373,7 +406,19 @@ def create_app(df: pd.DataFrame) -> Dash:
         'minHeight': '100vh',
         'fontFamily': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
     })
-
+    # Reset button callback
+    @app.callback(
+        Output("sector-filter", "value"),
+        Output("location-filter", "value"),
+        Output("contract-filter", "value"),
+        Output("cluster-filter", "value"),
+        Output("salary-range", "value"),
+        Input("reset-btn", "n_clicks"),
+        prevent_initial_call=True
+    )
+    def reset_filters(n_clicks):
+        """Reset all filters to default values."""
+        return [], [], [], None, [0, 5000]
     @app.callback(
         Output("jobs-by-sector", "figure"),
         Output("salary-dist", "figure"),
