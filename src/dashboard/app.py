@@ -351,32 +351,16 @@ def create_app(df: pd.DataFrame) -> Dash:
                     'border': f'1px solid {COLORS["border"]}'
                 }),
                 
-                # Row 4: Companies and Temporal trend
+                # Row 4: Top companies (full width)
                 html.Div([
-                    html.Div([
-                        dcc.Graph(id="top-companies", config={'displayModeBar': True, 'displaylogo': False})
-                    ], style={
-                        'width': '48%',
-                        'display': 'inline-block',
-                        'backgroundColor': COLORS['card'],
-                        'padding': '20px',
-                        'borderRadius': '12px',
-                        'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
-                        'marginRight': '4%',
-                        'border': f'1px solid {COLORS["border"]}'
-                    }),
-                    html.Div([
-                        dcc.Graph(id="temporal-trend", config={'displayModeBar': True, 'displaylogo': False})
-                    ], style={
-                        'width': '48%',
-                        'display': 'inline-block',
-                        'backgroundColor': COLORS['card'],
-                        'padding': '20px',
-                        'borderRadius': '12px',
-                        'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
-                        'border': f'1px solid {COLORS["border"]}'
-                    })
-                ])
+                    dcc.Graph(id="top-companies", config={'displayModeBar': True, 'displaylogo': False})
+                ], style={
+                    'backgroundColor': COLORS['card'],
+                    'padding': '20px',
+                    'borderRadius': '12px',
+                    'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
+                    'border': f'1px solid {COLORS["border"]}'
+                })
             ], style={
                 'width': '68%',
                 'display': 'inline-block',
@@ -425,7 +409,6 @@ def create_app(df: pd.DataFrame) -> Dash:
         Output("jobs-by-location", "figure"),
         Output("cluster-viz", "figure"),
         Output("top-companies", "figure"),
-        Output("temporal-trend", "figure"),
         Input("sector-filter", "value"),
         Input("location-filter", "value"),
         Input("contract-filter", "value"),
@@ -694,71 +677,7 @@ def create_app(df: pd.DataFrame) -> Dash:
             )
 
         # Graph 6: Temporal trend (Enhanced with area chart)
-        if "publication_date" in dff.columns and dff["publication_date"].notna().any():
-            try:
-                dff_temporal = dff[dff["publication_date"].notna()].copy()
-                dff_temporal = dff_temporal.set_index("publication_date")
-                df_trend = dff_temporal.resample('W').size().reset_index(name='count')
-                
-                fig_temporal = go.Figure()
-                
-                # Add area trace
-                fig_temporal.add_trace(go.Scatter(
-                    x=df_trend["publication_date"],
-                    y=df_trend["count"],
-                    mode='lines+markers',
-                    name='Jobs Posted',
-                    line=dict(color=COLORS['secondary'], width=3),
-                    fill='tozeroy',
-                    fillcolor=f'rgba(52, 152, 219, 0.2)',
-                    marker=dict(size=8, color=COLORS['secondary'], line=dict(color='white', width=2)),
-                    hovertemplate='<b>Week: %{x|%Y-%m-%d}</b><br>Jobs: %{y}<extra></extra>'
-                ))
-                
-                fig_temporal.update_layout(
-                    title="📅 Job Postings Timeline (Weekly)",
-                    xaxis_title="Week",
-                    yaxis_title="Number of Jobs",
-                    template=CHART_TEMPLATE,
-                    showlegend=False,
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font=dict(size=12),
-                    title_font=dict(size=16, color=COLORS['primary']),
-                    margin=dict(t=60, l=50, r=30, b=50),
-                    hovermode='x unified'
-                )
-                
-                logger.info("✓ Temporal chart: %d weeks, %d total jobs", 
-                           len(df_trend), df_trend['count'].sum())
-            except Exception as e:
-                logger.warning("Temporal trend error: %s", e)
-                fig_temporal = go.Figure()
-                fig_temporal.update_layout(
-                    title=f"📅 Temporal Trend (Error: {str(e)})",
-                    template=CHART_TEMPLATE,
-                    annotations=[dict(text="Error loading temporal data", showarrow=False, font=dict(size=14))]
-                )
-        else:
-            # Explicit message when source data has no publication_date values
-            fig_temporal = go.Figure()
-            fig_temporal.update_layout(
-                title="📅 Job Postings Timeline (No Dates in Source)",
-                template=CHART_TEMPLATE,
-                annotations=[dict(
-                    text="Publication dates were not provided in the scraped data. Rerun scraping with dates to enable this chart.",
-                    showarrow=False,
-                    font=dict(size=13),
-                    xref="paper",
-                    yref="paper",
-                    x=0.5,
-                    y=0.5
-                )],
-                xaxis=dict(visible=False),
-                yaxis=dict(visible=False)
-            )
-
-        return fig_sector, fig_salary, fig_location, fig_cluster, fig_companies, fig_temporal
+        return fig_sector, fig_salary, fig_location, fig_cluster, fig_companies
 
     return app
 
