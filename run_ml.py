@@ -27,7 +27,7 @@ if __name__ == "__main__":
         # Step 1: NMF Topic Clustering
         logger.info("\n--- Step 1: NMF Topic Clustering ---")
         text_col = "description_clean" if "description_clean" in df.columns else "description"
-        df = apply_nmf(df, text_col=text_col, n_components=5, max_features=500)
+        df = apply_nmf(df, text_col=text_col, n_components=7, max_features=1000)
         logger.info("✓ NMF clustering completed. Added 'job_cluster' column.")
         
         # Step 2: Classification (Salary Prediction)

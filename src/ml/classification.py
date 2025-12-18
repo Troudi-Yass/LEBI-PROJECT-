@@ -36,8 +36,8 @@ def train_logistic(df: pd.DataFrame, text_col: str = "description", label_col: s
     texts = df[text_col].fillna("").astype(str).tolist()
     vect, X = build_tfidf_matrix(texts)
     y = df[label_col].values
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    model = LogisticRegression(max_iter=500)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    model = LogisticRegression(max_iter=1000, C=10, solver='lbfgs', class_weight='balanced')
     model.fit(X_train, y_train)
     preds = model.predict(X_test)
     probs = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else None

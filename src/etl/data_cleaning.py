@@ -284,6 +284,43 @@ def remove_empty_categories(df: pd.DataFrame, columns: list = None) -> pd.DataFr
     logger.info("✓ Removed rows with empty categories: %d -> %d (removed %d)", before, len(df), removed)
     
     return df
+
+
+def remove_contracts_without_salary(df: pd.DataFrame, min_salary_jobs: int = 5) -> pd.DataFrame:
+    """Remove contract types with insufficient salary data.
+    
+    Args:
+        df: Input DataFrame
+        min_salary_jobs: Minimum number of jobs with salary data to keep a contract type
+        
+    Returns:
+        DataFrame with contract types having insufficient salary data removed
+    """
+    if df.empty or 'contract_type' not in df.columns or 'salary_monthly' not in df.columns:
+        return df
+    
+    before = len(df)
+    contracts_to_remove = []
+    
+    # Check salary data for each contract type
+    for contract in df['contract_type'].unique():
+        if pd.isna(contract) or contract == '':
+            continue
+        
+        contract_subset = df[df['contract_type'] == contract]
+        salary_count = contract_subset['salary_monthly'].notna().sum()
+        
+        # If less than min_salary_jobs with salary, mark for removal
+        if salary_count < min_salary_jobs:
+            contracts_to_remove.append(contract)
+            logger.info(f"  - Removing '{contract}': only {salary_count} jobs with salary data")
+    
+    # Remove the marked contract types
+    if contracts_to_remove:
+        df = df[~df['contract_type'].isin(contracts_to_remove)]
+        removed = before - len(df)
+        logger.info(f"✓ Removed {len(contracts_to_remove)} contract types with insufficient salary: {before} -> {len(df)} (removed {removed})")
+    
     return df
 
 
@@ -355,6 +392,10 @@ def prepare_clean(path_in: Path = RAW_CSV, path_out: Path = CLEAN_CSV) -> pd.Dat
     # Normalize salary to monthly numeric
     if "salary" in df.columns:
         df["salary_monthly"] = df["salary"].apply(normalize_salary)
+    
+    # Remove contract types with insufficient salary data (AFTER salary normalization!)
+    logger.info("Removing contract types with insufficient salary data...")
+    df = remove_contracts_without_salary(df, min_salary_jobs=5)
     
     # Clean text descriptions using NLTK
     if "description" in df.columns:

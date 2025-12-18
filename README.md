@@ -18,38 +18,40 @@
 The **LEBI (Labor Economics Business Intelligence) Project** is a comprehensive data science pipeline that transforms raw job postings from HelloWork.com into actionable business intelligence through web scraping, ETL processing, machine learning, and interactive visualization.
 
 ### Key Achievements
-- 🔍 **1,169 clean jobs** across **24 professional sectors** (with empty data removed)
-- 🧹 **86.7% data completeness** (1,013 with valid salaries)
-- 🤖 **5 job topics** discovered via NMF clustering
-- 📈 **98.93% AUC score** for salary classification (improved after data cleaning)
-- 🎨 **Modern interactive dashboard** with 6 visualizations + KPI metrics
-- 📍 **517 locations** with geographic analysis
-- 🏢 **160 companies** in enriched dataset
+- 🔍 **1,078 clean jobs** across **24 professional sectors** (removed contracts with insufficient data)
+- 🧹 **93.7% data completeness** (1,010 with valid salaries)
+- 🤖 **7 job topics** discovered via NMF clustering with bigrams
+- 📈 **98.05% AUC score** for salary classification (optimized hyperparameters)
+- 🎨 **Modern interactive dashboard** with 5 visualizations + KPI metrics
+- 📍 **493 normalized locations** with geographic analysis
+- 🏢 **160+ companies** in enriched dataset
+- ⚡ **1,000 TF-IDF features** with 2-word phrase detection
 
 ### 🔄 Pipeline Architecture
 
 ```
 ┌─────────────────┐
 │  Phase 1: WEB   │  Selenium-based scraping
-│   SCRAPING      │  → 26 sectors, ~1.4K jobs
+│   SCRAPING      │  → 24 sectors, ~1.4K jobs
 └────────┬────────┘
          │
          ↓
 ┌─────────────────┐
 │   Phase 2: ETL  │  NLTK French NLP + TF-IDF
 │  DATA CLEANING  │  → Salary normalization
+│                 │  → Contract filtering (remove empty)
 └────────┬────────┘
          │
          ↓
 ┌─────────────────┐
-│   Phase 3: ML   │  NMF Clustering + LogReg
-│  MODELING       │  → Topic discovery + prediction
+│   Phase 3: ML   │  NMF (7 topics, 1K features, bigrams)
+│  MODELING       │  → LogReg (C=10, balanced, AUC 98%)
 └────────┬────────┘
          │
          ↓
 ┌─────────────────┐
 │  Phase 4: VIZ   │  Dash + Plotly dashboard
-│   DASHBOARD     │  → Real-time filtering
+│   DASHBOARD     │  → Real-time filtering (0-5k salary)
 └─────────────────┘
 ```
 
@@ -80,7 +82,7 @@ LEBI PROJECT/
 ├── 📓 Phase Notebooks (Educational Format)
 │   ├── Phase1_Scrapping.ipynb      # Step-by-step web scraping guide
 │   ├── Phase2_ETL.ipynb            # Data cleaning walkthrough
-│   ├── Phase3_ML.ipynb             # ML pipeline with evaluation
+│   ├── Phase3_ML.ipynb             # ML pipeline with evaluation (unified)
 │   └── Phase4_Dashboard.ipynb      # Dashboard creation guide
 │
 ├── 📂 data/                        # Data directory (tracked on 'data' branch)
@@ -88,9 +90,9 @@ LEBI PROJECT/
 │   │   ├── hellowork_final_sectors_data.csv  (1,374 raw jobs)
 │   │   └── hellowork_progress.csv           (incremental saves)
 │   ├── processed/                  # Phase 2 output: cleaned data
-│   │   └── hellowork_cleaned.csv            (1,219 cleaned jobs)
+│   │   └── hellowork_cleaned.csv            (1,078 cleaned jobs)
 │   └── enriched/                   # Phase 3 output: ML-enriched data
-│       ├── hellowork_ml_enriched.csv        (with clusters & predictions)
+│       ├── hellowork_ml_enriched.csv        (with 7 clusters & predictions)
 │       └── hellowork_ml_summary.json        (model metrics)
 │
 ├── 🔧 src/                         # Production source code
@@ -102,12 +104,12 @@ LEBI PROJECT/
 │   │   └── data_cleaning.py        # NLTK + TF-IDF text processing
 │   ├── ml/
 │   │   ├── __init__.py
-│   │   ├── vectorization.py        # TF-IDF vectorization
-│   │   ├── clustering.py           # NMF topic modeling
-│   │   └── classification.py       # LogisticRegression classifier
+│   │   ├── vectorization.py        # TF-IDF vectorization (1K features, bigrams)
+│   │   ├── clustering.py           # NMF topic modeling (7 topics)
+│   │   └── classification.py       # LogisticRegression (C=10, balanced)
 │   ├── dashboard/
 │   │   ├── __init__.py
-│   │   └── app.py                  # Dash application with 5 graphs
+│   │   └── app.py                  # Dash application with 5 charts + KPIs
 │   └── utils/
 │       ├── __init__.py
 │       └── config.py               # Centralized configuration

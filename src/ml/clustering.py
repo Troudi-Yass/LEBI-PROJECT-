@@ -39,11 +39,11 @@ def apply_nmf(df: pd.DataFrame, text_col: str = "description_clean",
     
     texts = df[text_col].fillna("").astype(str)
     logger.info("Applying TF-IDF vectorization (max_features=%d)", max_features)
-    tfidf = TfidfVectorizer(max_features=max_features, min_df=2, max_df=0.9)
+    tfidf = TfidfVectorizer(max_features=max_features, min_df=2, max_df=0.9, ngram_range=(1, 2))
     X_text = tfidf.fit_transform(texts)
     
     logger.info("Applying NMF with %d components", n_components)
-    nmf = NMF(n_components=n_components, random_state=42, max_iter=400)
+    nmf = NMF(n_components=n_components, random_state=42, max_iter=500, init='nndsvda')
     W = nmf.fit_transform(X_text)  # Documents x Topics matrix
     
     # Assign each job to dominant topic
