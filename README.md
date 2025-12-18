@@ -18,14 +18,14 @@
 The **LEBI (Labor Economics Business Intelligence) Project** is a comprehensive data science pipeline that transforms raw job postings from HelloWork.com into actionable business intelligence through web scraping, ETL processing, machine learning, and interactive visualization.
 
 ### Key Achievements
-- 🔍 **1,078 clean jobs** across **24 professional sectors** (removed contracts with insufficient data)
-- 🧹 **93.7% data completeness** (1,010 with valid salaries)
-- 🤖 **7 job topics** discovered via NMF clustering with bigrams
-- 📈 **98.05% AUC score** for salary classification (optimized hyperparameters)
+- 🔍 **1,239 clean jobs** across **23 professional sectors**
+- 🧹 **86.6% salary coverage** (1,073 with valid salaries)
+- 🤖 **7 job topics** discovered via NMF (bigrams, 1K features)
+- 📈 **0.982 AUC** salary classifier (LogReg, balanced, 2K features)
 - 🎨 **Modern interactive dashboard** with 5 visualizations + KPI metrics
-- 📍 **493 normalized locations** with geographic analysis
-- 🏢 **160+ companies** in enriched dataset
-- ⚡ **1,000 TF-IDF features** with 2-word phrase detection
+- 📍 **651 normalized locations** with geographic analysis
+- 🏢 **175 companies** in the enriched dataset
+- ⚡ **TF-IDF feature space:** 1K (clustering) / 2K (classification)
 
 ### 🔄 Pipeline Architecture
 
@@ -57,7 +57,7 @@ The **LEBI (Labor Economics Business Intelligence) Project** is a comprehensive 
 
 ---
 
-## � Table of Contents
+## 📑 Table of Contents
 
 - [Project Structure](#-project-structure)
 - [Quick Start](#-quick-start)
@@ -87,10 +87,10 @@ LEBI PROJECT/
 │
 ├── 📂 data/                        # Data directory (tracked on 'data' branch)
 │   ├── raw/                        # Phase 1 output: raw scraped data
-│   │   ├── hellowork_final_sectors_data.csv  (1,374 raw jobs)
+│   │   ├── hellowork_final_sectors_data.csv  (1,364 raw jobs)
 │   │   └── hellowork_progress.csv           (incremental saves)
 │   ├── processed/                  # Phase 2 output: cleaned data
-│   │   └── hellowork_cleaned.csv            (1,078 cleaned jobs)
+│   │   └── hellowork_cleaned.csv            (1,239 cleaned jobs)
 │   └── enriched/                   # Phase 3 output: ML-enriched data
 │       ├── hellowork_ml_enriched.csv        (with 7 clusters & predictions)
 │       └── hellowork_ml_summary.json        (model metrics)
@@ -212,7 +212,7 @@ python -c "import selenium, dash, nltk, sklearn, pandas; print('✅ All packages
 
 ---
 
-## � Phase Details
+## 📚 Phase Details
 
 ### Phase 1: Web Scraping
 
@@ -255,7 +255,7 @@ SECTORS = [
 | `URL` | Job posting link | "https://..." |
 
 **Output:**
-- `data/raw/hellowork_final_sectors_data.csv` (1,374 jobs)
+- `data/raw/hellowork_final_sectors_data.csv` (1,364 jobs)
 - `data/raw/hellowork_progress.csv` (incremental backup)
 
 **Ethical Considerations:**
@@ -279,16 +279,14 @@ SECTORS = [
    - Schema validation
 
 2. **Duplicate Removal**
-   - Exact row duplicates: **-155 jobs**
-   - URL-based duplicates detected
-   - Final: 1,374 → 1,219 unique jobs
+   - Drop exact and URL-based duplicates
+   - Final: 1,364 → 1,239 unique jobs
 
 3. **Empty Category Removal** (NEW - Phase 2 Enhancement)
    - Removes jobs with empty/missing **Sector**
    - Removes jobs with empty/missing **Location**
    - Removes jobs with empty/missing **Contract_Type**
-   - Result: 1,219 → **1,169 clean jobs**
-   - Ensures all filters show only real data
+   - Ensures filters only show valid categories
    - Impact: Dashboard displays 100% valid categories
    ```python
    # Handles relative dates in French
@@ -305,7 +303,7 @@ SECTORS = [
      - Hourly: multiply by 160 (hours/month)
      - Annual: divide by 12
      - "30k€" → 30,000 / 12 = 2,500€/month
-   - **Result:** 1,057/1,219 (86.7%) valid salaries
+   - **Result:** 1,073/1,239 (86.6%) valid salaries
 
 5. **French Text Cleaning (NLTK)**
    ```python
@@ -329,13 +327,13 @@ SECTORS = [
    - Creates `*_enc` columns for ML compatibility
 
 **Output:**
-- `data/processed/hellowork_cleaned.csv` (1,219 jobs, 16 columns)
+- `data/processed/hellowork_cleaned.csv` (1,239 jobs, 16 columns)
 
 **Data Quality Metrics:**
 | Metric | Value |
 |--------|-------|
-| Total Jobs | 1,219 |
-| Salary Completeness | 86.7% (1,057) |
+| Total Jobs | 1,239 |
+| Salary Completeness | 86.6% (1,073) |
 | Text Cleaning | 100% |
 | Encoded Features | 4 categories |
 
@@ -350,14 +348,14 @@ SECTORS = [
 **Algorithm:** Non-negative Matrix Factorization (NMF)
 - **Why NMF?** Produces interpretable topics (vs K-Means)
 - **Parameters:**
-  - `n_components=5` topics
-  - `max_iter=400`
-  - `random_state=42` (reproducibility)
+   - `n_components=7` topics
+   - `max_iter=500`
+   - `max_features=1000`, `min_df=2`, `max_df=0.9`, `ngram_range=(1, 2)`
+   - `random_state=42` (reproducibility)
 
 **TF-IDF Vectorization:**
-- `max_features=500` (vocabulary size)
-- `min_df=2` (term must appear in ≥2 documents)
-- `max_df=0.9` (exclude terms in >90% of documents)
+- 1,000 features, unigrams + bigrams
+- Stop words handled upstream during cleaning
 
 **Topic Assignment:**
 ```python
@@ -365,67 +363,49 @@ SECTORS = [
 W = nmf.fit_transform(X_text)  # Document-Topic matrix
 df['job_cluster'] = W.argmax(axis=1)  # Select highest weight
 ```
+Top terms are logged during `run_ml.py` execution for transparency.
 
-**Discovered Topics (Top Terms):**
-```
-Topic 0: professionnel, équipe, recherche, expérience, clients
-Topic 1: formation, compétences, développement, gestion, service
-Topic 2: travail, entreprise, poste, secteur, activité
-Topic 3: projets, technique, mission, qualité, outils
-Topic 4: commercial, vente, marché, produits, clientèle
-```
-
-**Cluster Distribution:**
+**Cluster Distribution (current dataset, 1,239 rows):**
 | Cluster | Jobs | Percentage |
 |---------|------|------------|
-| 0 | 247 | 20.3% |
-| 1 | 289 | 23.7% |
-| 2 | 198 | 16.2% |
-| 3 | 256 | 21.0% |
-| 4 | 229 | 18.8% |
+| 0 | 209 | 16.9% |
+| 1 | 149 | 12.0% |
+| 2 | 210 | 16.9% |
+| 3 | 103 | 8.3% |
+| 4 | 404 | 32.6% |
+| 5 | 70 | 5.6% |
+| 6 | 94 | 7.6% |
 
 #### 3.2 Salary Classification
 
 **Algorithm:** Logistic Regression
 - **Target:** Binary classification (high vs low salary)
 - **Threshold:** Median salary (€2,116.90/month)
-- **Features:** TF-IDF vectors (500 dimensions)
+- **Features:** TF-IDF vectors (2,000 dimensions)
 
 **Training Configuration:**
 ```python
 # Stratified train/test split
 X_train, X_test = train_test_split(X, y, test_size=0.2, 
                                      stratify=y, random_state=42)
-# Class distribution:
-# - Low salary (0): 749 jobs
-# - High salary (1): 470 jobs
-
-LogisticRegression(max_iter=500)
+LogisticRegression(max_iter=1000, C=10, class_weight='balanced')
 ```
 
-**Model Performance:**
-
-**Cross-Validation (5-Fold Stratified):**
-```
-AUC Scores: [0.9589, 0.9843, 0.9721, 0.9695, 0.9753]
-Mean AUC: 0.9720 ± 0.0088
-```
-
-**Test Set Metrics (After Data Cleaning):**
+**Model Performance (current run, 1,239 rows → 80/20 split):**
 | Metric | Value |
 |--------|-------|
-| **AUC** | **0.9893** |
-| Precision | 0.9750 |
-| Recall | 0.8404 |
-| F1-Score | 0.9029 |
-| Accuracy | 0.9303 |
+| **AUC** | **0.9825** |
+| Precision (high) | 1.0000 |
+| Recall (high) | 0.8372 |
+| F1-Score (high) | 0.9114 |
+| Accuracy | 0.9435 |
 
-**Confusion Matrix:**
+**Confusion Matrix (test set):**
 ```
-              Predicted
-              Low    High
-Actual Low    148     2     (98.7% precision)
-      High     15    79     (84.0% recall)
+        Predicted
+        Low    High
+Actual Low    162     0
+   High     14    72
 ```
 
 **Feature Importance (Top 15 TF-IDF Terms):**
@@ -442,7 +422,7 @@ junior            ↓ LOW   (-0.5432)
 ```
 
 **Output:**
-- `data/enriched/hellowork_ml_enriched.csv` (1,169 jobs + ML features, cleaned data)
+- `data/enriched/hellowork_ml_enriched.csv` (1,239 jobs + ML features, cleaned data)
 - `data/enriched/hellowork_ml_summary.json` (model metrics)
 
 **Run Command:**
@@ -477,19 +457,19 @@ python run_ml.py
 ```
 ┌──────────────┬──────────────┬─────────────┬──────────────┐
 │ 📊 JOBS      │ 💰 AVG SAL   │ 🏢 SECTORS  │ 🏭 COMPANIES │
-│   1,169      │   €2,094     │     24      │     160      │
+│   1,239      │   €2,106     │     23      │     175      │
 └──────────────┴──────────────┴─────────────┴──────────────┘
 ```
 
 **Interactive Filters (Sticky Sidebar):**
-1. **🏢 Sector** (multi-select): 24 professional sectors
-2. **📍 Location** (multi-select): 517 unique locations
-3. **📝 Contract Type** (multi-select): 7 contract types
-4. **🔢 Cluster ID** (numeric input): Topics 0-4
+1. **🏢 Sector** (multi-select): 23 professional sectors
+2. **📍 Location** (multi-select): 651 unique locations
+3. **📝 Contract Type** (multi-select): 5 contract types
+4. **🔢 Cluster ID** (numeric input): Topics 0-6
 5. **💵 Salary Range** (dual slider): €0 - €20,000/month
 6. **🔄 Reset Button**: Clear all filters instantly
 
-#### 📈 Dashboard Visualizations (6 Charts)
+#### 📈 Dashboard Visualizations (5 Charts)
 
 **1. 📊 Job Distribution by Sector (Bar Chart - Top 15)**
 - Shows job volume across top sectors
@@ -501,22 +481,22 @@ python run_ml.py
 
 **2. 💰 Salary Distribution (Histogram + Statistics)**
 - 40-bin histogram showing salary frequency
-- **Mean line** (red dashed): €2,094/month
-- **Median line** (orange dotted): €2,109/month
+- **Mean line** (red dashed): €2,106/month
+- **Median line** (orange dotted): €2,117/month
 - Reveals salary patterns and outliers
-- Range: €486 - €17,500/month
+- Range: €1 - €8,229/month
 - Formatted hover tooltips with currency
 
 **3. 📍 Top 20 Job Locations (Horizontal Bar Chart)** ⭐ NEW
 - Geographic analysis of job market
 - Teal gradient color scheme
 - Shows which cities have most opportunities
-- 517 total locations tracked
+- 651 total locations tracked
 - Helps job seekers identify regional hotspots
 - Text labels for easy reading
 
 **4. 🎯 Cluster Analysis by Salary (Box Plots)** 🔄 IMPROVED
-- X-axis: NMF Clusters (0-4)
+- X-axis: NMF Clusters (0-6)
 - Y-axis: Monthly Salary (€)
 - Shows quartiles, median, and outliers
 - Color-coded by cluster
@@ -530,32 +510,23 @@ python run_ml.py
 - Useful for job seeker company targeting
 - Shows employer concentration
 
-**6. 📅 Job Posting Timeline (Area Chart)**
-- Weekly job posting volume over time
-- Area fill with line markers
-- Identifies hiring seasons and trends
-- Smooth curve for readability
-- Range slider for zooming
-- Hover shows exact weekly counts
-
 #### 🎛️ Real-Time Interactive Callbacks
 All 6 charts update **simultaneously** when filters change:
 ```python
 @app.callback(
-    [Output('jobs-by-sector', 'figure'),
-     Output('salary-dist', 'figure'),
-     Output('jobs-by-location', 'figure'),
-     Output('cluster-viz', 'figure'),
-     Output('top-companies', 'figure'),
-     Output('temporal-trend', 'figure')],
-    [Input('sector-filter', 'value'),
-     Input('location-filter', 'value'),
-     Input('contract-filter', 'value'),
-     Input('cluster-filter', 'value'),
-     Input('salary-range', 'value')]
+   [Output('jobs-by-sector', 'figure'),
+    Output('salary-dist', 'figure'),
+    Output('jobs-by-location', 'figure'),
+    Output('cluster-viz', 'figure'),
+    Output('top-companies', 'figure')],
+   [Input('sector-filter', 'value'),
+    Input('location-filter', 'value'),
+    Input('contract-filter', 'value'),
+    Input('cluster-filter', 'value'),
+    Input('salary-range', 'value')]
 )
 def update_all_charts(sectors, locations, contracts, cluster, salary):
-    # Filter data and return 6 updated figures
+   # Filter data and return 5 updated figures
 ```
 
 **Run Dashboard:**
@@ -565,14 +536,14 @@ python run_dashboard.py
 ```
 
 **Performance:**
-- Loads 1,169 clean jobs instantly
+- Loads 1,239 clean jobs instantly
 - Real-time filtering (<100ms response)
 - Responsive on desktop and tablet
 - Responsive layout (desktop/tablet)
 
 ---
 
-## � Technical Stack
+## 🧰 Technical Stack
 
 ### Core Technologies
 
@@ -637,75 +608,35 @@ logger.error("Critical failure")
 
 | Stage | Input | Output | Processing | Time |
 |-------|-------|--------|------------|------|
-| **Phase 1: Scraping** | - | 1,374 jobs | 26 sectors | ~45 min |
-| **Phase 2: ETL** | 1,374 | 1,219 jobs | Remove duplicates | ~10 sec |
-| **Phase 2b: Cleaning** | 1,219 | 1,169 jobs | Remove empty categories ✨ | <1 sec |
-| **Phase 3: ML** | 1,169 | 1,169 enriched | NMF + LogReg | ~15 sec |
-| **Phase 4: Dashboard** | 1,169 | 6 charts + KPIs | Visualization | <1 sec |
+| **Phase 1: Scraping** | - | 1,364 jobs | 26 sectors | ~45 min |
+| **Phase 2: ETL** | 1,364 | 1,239 jobs | Deduplicate + normalize + clean | ~10 sec |
+| **Phase 2b: Cleaning** | 1,239 | 1,239 jobs | Remove empty categories ✨ | <1 sec |
+| **Phase 3: ML** | 1,239 | 1,239 enriched | NMF + LogReg | ~15 sec |
+| **Phase 4: Dashboard** | 1,239 | 5 charts + KPIs | Visualization | <1 sec |
 
 ### Data Quality Report (After Cleaning)
 
-**Completeness (All 1,169 jobs):**
-```
-Field                  Records    %
-─────────────────────────────────────
-Sector                 1,169     100.0% ✓
-Job_Title              1,169     100.0% ✓
-Company                1,169     100.0% ✓
-Location               1,169     100.0% ✓
-Contract_Type          1,169     100.0% ✓
-Description_Clean      1,169     100.0% ✓
-Salary_Monthly         1,013      86.7% ✓
-```
+**Data Snapshot (1,239 rows):**
+- Salary coverage: 1,073 rows (86.6%)
+- Unique sectors: 23 | Locations: 651 | Companies: 175 | Contract types: 5
+- Salary stats (n=1,073): mean €2,106 | median €2,117 | min €1 | max €8,229 | std €514 | IQR €458
 
-**Salary Statistics (n=1,013 valid):**
-- **Average:** €2,094/month
-- **Median:** €2,109/month
-- **Std Dev:** €1,534/month
-- **Min:** €486/month
-- **Max:** €17,500/month
-- **Range:** €17,014/month
-- **IQR:** €1,500/month
-
-**Sector Distribution (All 24 sectors):**
-1. **Services aux Personnes** - 253 jobs (21.6%)
-2. **Enseignement & Formation** - 233 jobs (19.9%)
-3. **Distribution & Commerce** - 225 jobs (19.2%)
-4. **Services aux Entreprises** - 109 jobs (9.3%)
-5. **Industrie Auto-Méca** - 56 jobs (4.8%)
-6. **Service Public Hospitalier** - 51 jobs (4.4%)
-7. **Immobilier** - 40 jobs (3.4%)
-8. **Média & Internet** - 40 jobs (3.4%)
-9. **Industrie Agro-Alimentaire** - 20 jobs (1.7%)
-10. **Transport & Logistique** - 24 jobs (2.1%)
-+ 14 more sectors
-
-**Geographic Coverage:**
-- **Unique Locations:** 517 cities/regions
-- **Top 5 Regions:**
-  1. Paris - 18.2%
-  2. Lyon - 7.3%
-  3. Toulouse - 5.1%
-  4. Marseille - 4.6%
-  5. Bordeaux - 3.8%
-4. **Santé • Social** - 7.2% (88 jobs)
-5. **BTP** - 6.8% (83 jobs)
+**Top Sectors (by job count):**
+1. Services aux Personnes / Particuliers — 290
+2. Enseignement / Formation — 251
+3. Distribution / Commerce — 213
+4. Services aux Entreprises — 125
+5. Service public hospitalier — 55
 
 ### ML Model Performance
 
 **NMF Clustering:**
-- **Topics Discovered:** 5
-- **Interpretability:** ✅ Clear semantic separation
-- **Distribution:** Balanced (16-24% per cluster)
+- **Topics:** 7 (bigrams, 1K features)
+- **Distribution (current dataset):** {0: 209, 1: 149, 2: 210, 3: 103, 4: 404, 5: 70, 6: 94}
 
 **Logistic Regression (Salary Prediction):**
-- **Training Set:** 975 jobs (80%)
-- **Test Set:** 244 jobs (20%)
-- **Cross-Validation AUC:** 0.9720 ± 0.0088
-- **Test AUC:** 0.9720
-- **Precision (High Salary):** 97.5%
-- **Recall (High Salary):** 84.0%
-- **F1-Score:** 90.3%
+- **Split:** 80/20 stratified on 1,239 rows (2K TF-IDF features)
+- **AUC:** 0.9825 | **Precision (high):** 1.00 | **Recall (high):** 0.84 | **F1 (high):** 0.91 | **Accuracy:** 0.94
 
 **ROC Curve Analysis:**
 ```
@@ -996,7 +927,7 @@ selenium.common.exceptions.SessionNotCreatedException: Message: session not crea
    python run_etl.py
    ```
 
-3. **Expected:** 86.7% completeness (1,057/1,219 valid salaries)
+3. **Expected:** 86.6% completeness (1,073/1,239 valid salaries)
 
 ---
 
